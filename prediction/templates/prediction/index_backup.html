@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Risk Prediction</title>
+
+    <!-- Library Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #263238;
+        }
+
+        header {
+            background: #176b52;
+            color: white;
+            padding: 25px 8%;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        header p {
+            margin-bottom: 0;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1050px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            margin-bottom: 22px;
+            border-radius: 14px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 22px;
+        }
+
+        .field {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 9px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #176b52;
+        }
+
+        select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #d5dce3;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .value {
+            color: #176b52;
+            font-weight: bold;
+            float: right;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #176b52;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #10533f;
+        }
+
+        button:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #eaf5ef;
+            border-radius: 10px;
+        }
+
+        #prediction {
+            font-size: 28px;
+            font-weight: bold;
+            color: #176b52;
+        }
+
+        #probabilities {
+            margin-top: 15px;
+        }
+
+        .bar {
+            height: 10px;
+            background: #e5e9ed;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 7px 0 15px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: #299d78;
+            transition: width 0.4s ease;
+        }
+
+        /* Area grafik */
+        .chart-container {
+            position: relative;
+            max-width: 520px;
+            height: 330px;
+            margin: 25px auto 5px;
+        }
+
+        .error {
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .disclaimer {
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-top: 18px;
+        }
+
+        @media(max-width: 650px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            .chart-container {
+                height: 280px;
+            }
+        }
+
+        /* Tampilan tombol penjelasan AI */
+        #explainButton {
+            margin-top: 20px;
+            background: #2563eb;
+        }
+
+        #explainButton:hover {
+            background: #1d4ed8;
+        }
+
+        /* Kotak hasil penjelasan AI */
+        .explanation-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f5ff;
+            border-left: 5px solid #2563eb;
+            border-radius: 10px;
+            line-height: 1.7;
+        }
+
+        .explanation-box h4 {
+            color: #1d4ed8;
+            margin-top: 0;
+        }
+
+        .explanation-box p {
+            white-space: pre-line;
+        }
+
+        .history-section {
+            margin-top: 35px;
+            padding: 25px;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+        }
+
+        .history-section h2 {
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .history-description {
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        .history-table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 13px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .history-table th {
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        .history-table td {
+            color: #334155;
+        }
+
+        #historyTotal {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #334155;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Diabetes Risk Prediction</h1>
+    <p>Sistem Prediksi Risiko Diabetes Berbasis Machine Learning</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+
+        <h2>Input Data Pengguna</h2>
+        <p>Masukkan data untuk melakukan prediksi risiko diabetes.</p>
+
+        <form id="predictionForm">
+
+            <div class="form-grid">
+
+                <div class="field">
+                    <label>Usia <span class="value" id="ageValue">47</span></label>
+                    <input type="range" id="age" min="18" max="80" value="47">
+                </div>
+
+                <div class="field">
+                    <label>BMI <span class="value" id="bmiValue">26.5</span></label>
+                    <input type="range" id="bmi" min="15" max="40.8" step="0.1" value="26.5">
+                </div>
+
+                <div class="field">
+                    <label>Jam Tidur <span class="value" id="sleepValue">9</span></label>
+                    <input type="range" id="sleep" min="3" max="12" step="0.5" value="9">
+                </div>
+
+                <div class="field">
+                    <label>Tingkat Stres <span class="value" id="stressValue">8</span></label>
+                    <input type="range" id="stress" min="1" max="10" value="8">
+                </div>
+
+                <div class="field">
+                    <label>Gula Darah Puasa <span class="value" id="glucoseValue">178</span></label>
+                    <input type="range" id="glucose" min="72" max="400" value="178">
+                </div>
+
+                <div class="field">
+                    <label>HbA1c <span class="value" id="hba1cValue">7.3</span></label>
+                    <input type="range" id="hba1c" min="4.8" max="13.4" step="0.1" value="7.3">
+                </div>
+
+                <div class="field">
+                    <label>Tekanan Darah Sistolik <span class="value" id="systolicValue">146</span></label>
+                    <input type="range" id="systolic" min="80" max="200" value="146">
+                </div>
+
+                <div class="field">
+                    <label>Tekanan Darah Diastolik <span class="value" id="diastolicValue">90</span></label>
+                    <input type="range" id="diastolic" min="50" max="120" value="90">
+                </div>
+
+                <div class="field">
+                    <label>Lingkar Pinggang <span class="value" id="waistValue">107.1</span></label>
+                    <input type="range" id="waist" min="73.2" max="148.2" step="0.1" value="107.1">
+                </div>
+
+                <div class="field">
+                    <label>Gender</label>
+                    <select id="gender">
+                        <option>Male</option>
+                        <option selected>Female</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Kota</label>
+                    <select id="city">
+                        <option>Mumbai</option>
+                        <option>Delhi</option>
+                        <option>Bengaluru</option>
+                        <option>Hyderabad</option>
+                        <option>Ahmedabad</option>
+                        <option>Chennai</option>
+                        <option>Kolkata</option>
+                        <option>Pune</option>
+                        <option>Surat</option>
+                        <option>Jaipur</option>
+                        <option>Kanpur</option>
+                        <option>Nagpur</option>
+                        <option>Indore</option>
+                        <option>Lucknow</option>
+                        <option>Thane</option>
+                        <option>Bhopal</option>
+                        <option>Visakhapatnam</option>
+                        <option>Patna</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Riwayat Diabetes Keluarga</label>
+                    <select id="family">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Aktivitas Fisik</label>
+                    <select id="activity">
+                        <option>Active</option>
+                        <option>Sedentary</option>
+                        <option>Moderate</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Jenis Diet</label>
+                    <select id="diet">
+                        <option>Non-Vegetarian</option>
+                        <option>Vegetarian</option>
+                        <option>Pescatarian</option>
+                        <option>Vegan</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Status Merokok</label>
+                    <select id="smoking">
+                        <option>Never</option>
+                        <option>Current</option>
+                        <option>Former</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Konsumsi Alkohol</label>
+                    <select id="alcohol">
+                        <option>Never</option>
+                        <option>Occasional</option>
+                        <option>Regular</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Pendapatan</label>
+                    <select id="income">
+                        <option>Low</option>
+                        <option selected>Middle</option>
+                        <option>High</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <button type="submit" id="predictButton">
+                Prediksi Risiko Diabetes
+            </button>
+
+        </form>
+
+        <!-- Hasil prediksi -->
+        <div class="result" id="result">
+
+            <h3>Hasil Prediksi</h3>
+
+            <div id="prediction"></div>
+
+            <h4>Persentase Probabilitas</h4>
+
+            <div id="probabilities"></div>
+
+            <!-- Grafik Chart.js -->
+            <h4>Grafik Probabilitas Prediksi</h4>
+
+            <div class="chart-container">
+                <canvas id="probabilityChart"></canvas>
+            </div>
+
+            <!-- Tombol untuk meminta penjelasan Groq -->
+            <button type="button" id="explainButton">
+                Jelaskan Grafik dengan AI
+            </button>
+
+            <!-- Area hasil penjelasan Groq -->
+            <div id="explanationBox" class="explanation-box" style="display: none;">
+
+                <h4>Penjelasan Grafik oleh AI</h4>
+
+                <p id="explanationText"></p>
+        
+
+            </div>
+
+        <!-- RIWAYAT PREDIKSI -->
+        <section class="history-section">
+            <h2>Riwayat Prediksi</h2>
+            <p class="history-description">
+                Daftar hasil prediksi diabetes yang pernah dilakukan.
+            </p>
+
+            <div class="history-table-container">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>Usia</th>
+                            <th>Gender</th>
+                            <th>BMI</th>
+                            <th>Hasil Prediksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="historyTableBody">
+                        <tr>
+                            <td colspan="6">Memuat riwayat...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="historyTotal">Total prediksi: 0</p>
+        </section>
+
+
+            <p id="error" class="error"></p>
+
+            <p class="disclaimer">
+                Catatan: Aplikasi ini merupakan proyek demonstrasi pembelajaran
+                Machine Learning, bukan alat diagnosis medis. Hasil prediksi
+                tidak menggantikan pemeriksaan tenaga kesehatan profesional.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    // Menghubungkan slider dengan angka yang tampil
+    const sliders = [
+        ["age", "ageValue"],
+        ["bmi", "bmiValue"],
+        ["sleep", "sleepValue"],
+        ["stress", "stressValue"],
+        ["glucose", "glucoseValue"],
+        ["hba1c", "hba1cValue"],
+        ["systolic", "systolicValue"],
+        ["diastolic", "diastolicValue"],
+        ["waist", "waistValue"]
+    ];
+
+    sliders.forEach(([sliderId, valueId]) => {
+
+        const slider = document.getElementById(sliderId);
+        const output = document.getElementById(valueId);
+
+        slider.addEventListener("input", () => {
+            output.textContent = slider.value;
+        });
+
+    });
+
+
+    // Menyiapkan grafik Chart.js
+    let probabilityChart = null;
+
+    // Menyimpan hasil prediksi terakhir
+    let hasilPrediksiTerakhir = null;
+
+
+    function tampilkanGrafik(probabilities) {
+
+        const labels = ["Low", "Moderate", "High"];
+
+        const values = labels.map(label =>
+            Number(probabilities[label] || 0)
+        );
+
+        const context = document
+            .getElementById("probabilityChart")
+            .getContext("2d");
+
+        // Menghapus grafik sebelumnya
+        if (probabilityChart) {
+            probabilityChart.destroy();
+        }
+
+        // Membuat grafik baru
+        probabilityChart = new Chart(context, {
+
+            type: "doughnut",
+
+            data: {
+                labels: labels,
+
+                datasets: [{
+                    label: "Probabilitas",
+
+                    data: values,
+
+                    backgroundColor: [
+                        "#299d78",
+                        "#f0b429",
+                        "#d9534f"
+                    ],
+
+                    borderColor: "#ffffff",
+                    borderWidth: 3
+                }]
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: {
+                        position: "bottom"
+                    },
+
+                    tooltip: {
+                        callbacks: {
+
+                            label: function(context) {
+                                return context.label + ": "
+                                    + context.parsed + "%";
+                            }
+
+                        }
+                    }
+
+                }
+
+            }
+
+        });
+
+    }
+
+
+    // Mengirim input ke API Django
+    document
+        .getElementById("predictionForm")
+        .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        const resultBox = document.getElementById("result");
+        const predictionText = document.getElementById("prediction");
+        const probabilitiesBox = document.getElementById("probabilities");
+        const errorText = document.getElementById("error");
+        const predictButton = document.getElementById("predictButton");
+
+        resultBox.style.display = "block";
+
+        predictionText.textContent = "Memproses...";
+        probabilitiesBox.innerHTML = "";
+        errorText.textContent = "";
+
+        predictButton.disabled = true;
+        predictButton.textContent = "Sedang memproses...";
+
+
+        // Mengambil seluruh data dari form
+        const data = {
+
+            age: Number(document.getElementById("age").value),
+
+            gender: document.getElementById("gender").value,
+
+            city: document.getElementById("city").value,
+
+            bmi: Number(document.getElementById("bmi").value),
+
+            family_history_diabetes:
+                document.getElementById("family").value,
+
+            physical_activity_level:
+                document.getElementById("activity").value,
+
+            diet_type:
+                document.getElementById("diet").value,
+
+            smoking_status:
+                document.getElementById("smoking").value,
+
+            alcohol_consumption:
+                document.getElementById("alcohol").value,
+
+            hours_sleep_per_night:
+                Number(document.getElementById("sleep").value),
+
+            stress_level:
+                Number(document.getElementById("stress").value),
+
+            fasting_blood_sugar:
+                Number(document.getElementById("glucose").value),
+
+            hba1c_level:
+                Number(document.getElementById("hba1c").value),
+
+            blood_pressure_systolic:
+                Number(document.getElementById("systolic").value),
+
+            blood_pressure_diastolic:
+                Number(document.getElementById("diastolic").value),
+
+            waist_circumference_cm:
+                Number(document.getElementById("waist").value),
+
+            income_bracket:
+                document.getElementById("income").value
+
+        };
+
+
+        try {
+
+            // Memanggil API prediksi Django
+            const response = await fetch("/api/predict/", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify(data)
+
+            });
+
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.error || "Prediksi gagal."
+                );
+            }
+
+
+            // Menampilkan hasil prediksi
+            predictionText.textContent = result.prediction;
+
+            // Menyimpan hasil prediksi untuk dikirim ke Groq
+            hasilPrediksiTerakhir = {
+                prediction: result.prediction,
+                probabilities: result.probabilities
+            };
+            // Memperbarui tabel riwayat
+            muatRiwayat();
+
+            // Mengosongkan penjelasan dari prediksi sebelumnya
+            document.getElementById("explanationBox").style.display = "none";
+            document.getElementById("explanationText").textContent = "";
+
+
+            // Menampilkan persentase probabilitas
+            const labels = ["Low", "Moderate", "High"];
+
+            labels.forEach(label => {
+
+                const probability =
+                    Number(result.probabilities[label] || 0);
+
+                probabilitiesBox.innerHTML += `
+
+                    <p>
+                        <strong>
+                            ${label}: ${probability}%
+                        </strong>
+                    </p>
+
+                    <div class="bar">
+
+                        <div
+                            class="bar-fill"
+                            style="width: ${probability}%">
+                        </div>
+
+                    </div>
+
+                `;
+
+            });
+
+
+            // Memperbarui grafik berdasarkan hasil API
+            tampilkanGrafik(result.probabilities);
+
+
+        } catch (error) {
+
+            predictionText.textContent = "";
+            probabilitiesBox.innerHTML = "";
+
+            errorText.textContent = error.message;
+
+        } finally {
+
+            predictButton.disabled = false;
+
+            predictButton.textContent =
+                "Prediksi Risiko Diabetes";
+
+        }
+
+    });
+
+
+    // Menghubungkan tombol penjelasan dengan Groq API
+    document.getElementById("explainButton").addEventListener("click", async function() {
+
+        const explainButton = document.getElementById("explainButton");
+        const explanationBox = document.getElementById("explanationBox");
+        const explanationText = document.getElementById("explanationText");
+
+        // Memastikan prediksi sudah dilakukan
+        if (!hasilPrediksiTerakhir) {
+            alert("Silakan lakukan prediksi terlebih dahulu!");
+            return;
+        }
+
+        explainButton.disabled = true;
+        explainButton.textContent = "AI sedang menganalisis...";
+
+        explanationBox.style.display = "block";
+        explanationText.textContent = "Mohon tunggu, Groq sedang menjelaskan grafik...";
+
+        try {
+
+            // Mengirim hasil prediksi ke API Django
+            const response = await fetch("/api/explain/", {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify(hasilPrediksiTerakhir)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.error || "Gagal mendapatkan penjelasan AI."
+                );
+            }
+
+            // Menampilkan jawaban Groq
+            explanationText.textContent = result.explanation;
+
+        } catch (error) {
+
+            explanationText.textContent =
+                "Terjadi kesalahan: " + error.message;
+
+        } finally {
+
+            explainButton.disabled = false;
+            explainButton.textContent = "Jelaskan Grafik dengan AI";
+
+        }
+
+    });
+
+
+    // ==========================================
+    // MENAMPILKAN RIWAYAT PREDIKSI
+    // ==========================================
+
+    async function muatRiwayat() {
+        const tbody = document.getElementById("historyTableBody");
+        const totalElement = document.getElementById("historyTotal");
+
+        try {
+            const response = await fetch("/api/riwayat/?format=json");
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error("Gagal mengambil riwayat prediksi.");
+            }
+
+            tbody.innerHTML = "";
+
+            if (result.data.length === 0) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+
+                cell.colSpan = 6;
+                cell.textContent = "Belum ada riwayat prediksi.";
+
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            } else {
+                result.data.forEach((item, index) => {
+                    const row = document.createElement("tr");
+
+                    const values = [
+                        index + 1,
+                        item.created_at,
+                        item.age,
+                        item.gender,
+                        item.bmi,
+                        item.prediction
+                    ];
+
+                    values.forEach(value => {
+                        const cell = document.createElement("td");
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+
+                    tbody.appendChild(row);
+                });
+            }
+
+            totalElement.textContent =
+                "Total prediksi: " + result.total;
+
+        } catch (error) {
+            tbody.innerHTML = "";
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 6;
+            cell.textContent = error.message;
+
+            row.appendChild(cell);
+            tbody.appendChild(row);
+        }
+    }
+
+    // Memuat riwayat saat halaman dibuka
+    muatRiwayat();
+
+    
+
+
+</script>
+
+</body>
+</html>
