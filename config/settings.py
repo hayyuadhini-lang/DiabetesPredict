@@ -12,41 +12,36 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 import os
 import dj_database_url
+
 from pathlib import Path
 from dotenv import load_dotenv
 
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-from dotenv import load_dotenv
 
 load_dotenv(BASE_DIR / ".env")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
- 
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
     "django-insecure-development-key"
 )
 
-DEBUG = os.getenv("DEBUG", "True") == "True"
-
-# SECURITY WARNING: don't run with debug turned on in production!
-
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    ".vercel.app",
 ]
 
-render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+# Domain yang diberikan Vercel
+vercel_url = os.getenv("VERCEL_URL")
+production_url = os.getenv("VERCEL_PROJECT_PRODUCTION_URL")
 
-if render_hostname:
-    ALLOWED_HOSTS.append(render_hostname)
+if vercel_url:
+    ALLOWED_HOSTS.append(vercel_url)
+
+if production_url:
+    ALLOWED_HOSTS.append(production_url)
 
 # Application definition
 
@@ -63,13 +58,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -101,8 +97,9 @@ if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=0,
             conn_health_checks=True,
+            ssl_require=True,
         )
     }
 else:
@@ -147,7 +144,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STORAGES = {
@@ -171,7 +168,17 @@ MAILERS = {
 
 CSRF_TRUSTED_ORIGINS = []
 
-if render_hostname:
+if vercel_url:
     CSRF_TRUSTED_ORIGINS.append(
-        f"https://{render_hostname}"
+        f"https://{vercel_url}"
     )
+
+if production_url:
+    CSRF_TRUSTED_ORIGINS.append(
+        f"https://{production_url}"
+    )
+
+SECURE_PROXY_SSL_HEADER = (
+    "HTTP_X_FORWARDED_PROTO",
+    "https"
+)
